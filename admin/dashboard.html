@@ -181,6 +181,7 @@ body { display:flex; flex-direction:column; min-height:100vh; background:#F5EDD8
   <div class="nav-group-label">Reports</div>
   <div class="nav-item" onclick="nav('rpt-arrivals',this)"><span class="ni">📅</span> Arrivals & Departures</div>
   <div class="nav-item" onclick="nav('rpt-occupancy',this)"><span class="ni">📈</span> Occupancy</div>
+  <div class="nav-item" onclick="nav('rpt-monthly',this)"><span class="ni">📆</span> Monthly Room Plan</div>
   <div class="nav-item" onclick="nav('rpt-transport',this)"><span class="ni">🚗</span> Transport</div>
   <div class="nav-item" onclick="nav('rpt-pooja',this)"><span class="ni">🙏</span> Pooja</div>
   <div class="nav-item" onclick="nav('rpt-addl',this)"><span class="ni">📝</span> Additional Requests</div>
@@ -366,8 +367,9 @@ body { display:flex; flex-direction:column; min-height:100vh; background:#F5EDD8
           <option value="NonAC">🌬️ Non-AC Room</option>
         </select>
         <button onclick="exportOccupancyExcel()"
-          style="background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 16px;font-size:0.82rem;cursor:pointer;font-weight:700;">
-          📥 Export Excel
+          style="background:#1B5E20;color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 16px;font-size:0.82rem;cursor:pointer;font-weight:700;"
+          title="Downloads as CSV file — open in Microsoft Excel or Google Sheets">
+          📥 Download Report (CSV→Excel)
         </button>
       </div>
     </div>
@@ -388,6 +390,69 @@ body { display:flex; flex-direction:column; min-height:100vh; background:#F5EDD8
         <table id="occCalTable" style="border-collapse:collapse;font-size:0.72rem;min-width:100%;">
           <thead id="occCalHead"></thead>
           <tbody id="occCalBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MONTHLY ROOM PLAN ── -->
+  <div class="page-section" id="page-rpt-monthly">
+    <div class="dash-header" style="flex-wrap:wrap;gap:10px;">
+      <div class="dash-title">📆 Upcoming Monthly Room Plan</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:0.82rem;">
+          <label style="color:var(--maroon);font-weight:700;">📅 Start from:</label>
+          <input type="date" id="mp-start" class="field-input"
+            style="padding:5px 10px;font-size:0.82rem;width:150px;"
+            oninput="renderMonthlyPlan()">
+          <select id="mp-days" onchange="renderMonthlyPlan()"
+            style="padding:5px 10px;border:1.5px solid var(--border-gold);border-radius:var(--radius-sm);font-size:0.82rem;background:var(--ivory);">
+            <option value="30">30 Days</option>
+            <option value="60">60 Days</option>
+            <option value="90">90 Days</option>
+          </select>
+        </div>
+        <select id="mp-cat" onchange="renderMonthlyPlan()"
+          style="padding:5px 10px;border:1.5px solid var(--border-gold);border-radius:var(--radius-sm);font-size:0.82rem;background:var(--ivory);">
+          <option value="">All Categories</option>
+          <option value="GH3BHK">🏡 Guest House 3BHK</option>
+          <option value="GH2BHK">🏠 Guest House 2BHK</option>
+          <option value="AC">❄️ AC Room</option>
+          <option value="NonAC">🌬️ Non-AC Room</option>
+        </select>
+        <select id="mp-filter" onchange="renderMonthlyPlan()"
+          style="padding:5px 10px;border:1.5px solid var(--border-gold);border-radius:var(--radius-sm);font-size:0.82rem;background:var(--ivory);">
+          <option value="all">📋 All Status</option>
+          <option value="occupied">🔴 Occupied Only</option>
+          <option value="available">✅ Available Only</option>
+          <option value="maintenance">🔧 Maintenance Only</option>
+        </select>
+        <button onclick="exportMonthlyPlanCSV()"
+          style="background:#1B5E20;color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 14px;font-size:0.8rem;cursor:pointer;font-weight:700;"
+          title="Download as CSV — open in Excel">
+          📥 Download (CSV)
+        </button>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex;gap:16px;padding:10px 16px;background:var(--ivory);border:1px solid var(--border-gold);border-radius:var(--radius-sm);margin-bottom:12px;flex-wrap:wrap;align-items:center;font-size:0.8rem;">
+      <strong style="color:var(--maroon);">Legend:</strong>
+      <span><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#4CAF50;vertical-align:middle;margin-right:4px;"></span>Available</span>
+      <span><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#F44336;vertical-align:middle;margin-right:4px;"></span>Occupied (hover for visitor name)</span>
+      <span><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#FFC107;vertical-align:middle;margin-right:4px;"></span>Maintenance</span>
+      <span style="color:var(--text-light);font-size:0.72rem;">| Weekend columns are highlighted darker</span>
+    </div>
+
+    <!-- Stats row -->
+    <div id="mp-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:12px;"></div>
+
+    <!-- Calendar table -->
+    <div class="panel" style="padding:0;">
+      <div style="overflow-x:auto;">
+        <table id="mpTable" style="border-collapse:collapse;font-size:0.72rem;min-width:100%;">
+          <thead id="mpHead"></thead>
+          <tbody id="mpBody"></tbody>
         </table>
       </div>
     </div>
@@ -937,6 +1002,7 @@ function nav(page, el) {
   if (page==='rpt-feedback')  { if(!allFeedback.length) loadFeedback(); else renderFeedback(filteredFeedback); }
   if (page==='rpt-payments')  { if(!allPayments.length) loadPayments(); else renderPayments(allPayments); }
   if (page==='rpt-regret')    renderRegretList();
+  if (page==='rpt-monthly')   renderMonthlyPlan();
 }
 
 // Called from overview "Go →" button — navigates to allocation page
@@ -1893,6 +1959,178 @@ function renderOccupancy() {
   if(!filteredRooms.length)bHtml='<tr><td colspan="'+(dates.length+2)+'" style="text-align:center;padding:30px;color:var(--text-light);">No rooms match the selected filter.</td></tr>';
   document.getElementById('occCalBody').innerHTML=bHtml;
 }
+
+
+// ══ MONTHLY ROOM PLAN — renderMonthlyPlan ══
+function renderMonthlyPlan() {
+  if (!allRooms.length) return;
+  const startEl  = document.getElementById('mp-start');
+  const daysEl   = document.getElementById('mp-days');
+  const catEl    = document.getElementById('mp-cat');
+  const filtEl   = document.getElementById('mp-filter');
+  if (startEl && !startEl.value) startEl.value = TODAY;
+  const startDate = (startEl && startEl.value) ? startEl.value : TODAY;
+  const days      = parseInt((daysEl && daysEl.value) || '30');
+  const catFilter = (catEl && catEl.value) || '';
+  const filterVal = (filtEl && filtEl.value) || 'all';
+
+  // Build dates
+  var dates = [];
+  for (var d = 0; d < days; d++) {
+    var dt = new Date(startDate + 'T00:00:00');
+    dt.setDate(dt.getDate() + d);
+    dates.push(dt.toISOString().split('T')[0]);
+  }
+
+  // Sort rooms
+  function catOrd(cat) {
+    var c=(cat||'').toLowerCase();
+    if(c.includes('3bhk'))return 1; if(c.includes('2bhk'))return 2;
+    if(c.includes('ac')&&!c.includes('non'))return 3; if(c.includes('non'))return 4; return 5;
+  }
+  var rooms = allRooms.slice().sort(function(a,b){
+    var co=catOrd(val(a,'Category'))-catOrd(val(b,'Category'));
+    return co||parseInt(String(val(a,'Room ID')).replace(/[^0-9]/g,''))-parseInt(String(val(b,'Room ID')).replace(/[^0-9]/g,''));
+  });
+  if (catFilter) {
+    rooms = rooms.filter(function(r){
+      var c=(val(r,'Category')||'').toLowerCase();
+      if(catFilter==='GH3BHK')return c.includes('3bhk');
+      if(catFilter==='GH2BHK')return c.includes('2bhk');
+      if(catFilter==='AC')return c.includes('ac')&&!c.includes('non')&&!c.includes('guest');
+      if(catFilter==='NonAC')return c.includes('non');
+      return true;
+    });
+  }
+
+  // Pre-compute status grid
+  var statusGrid = rooms.map(function(r){
+    var rid = String(val(r,'Room ID')||'').trim();
+    return dates.map(function(dstr){
+      if((val(r,'Status')||'').toLowerCase()==='maintenance')return{s:'Maintenance',who:'',id:''};
+      for(var i=0;i<allReservations.length;i++){
+        var res=allReservations[i];
+        var rs=(val(res,'Status')||'').toLowerCase();
+        if(rs==='cancelled'||rs==='regret')continue;
+        var ar=String(val(res,'Allocated Rooms')||'').split(',').map(function(x){return x.trim();});
+        if(ar.indexOf(rid)<0)continue;
+        var ci=toISO(val(res,'Check-In'));var co=toISO(val(res,'Check-Out'));
+        if(ci&&co&&dstr>=ci&&dstr<co)return{s:'Occupied',who:val(res,'Full Name')||'',id:val(res,'ID')||''};
+      }
+      return{s:'Available',who:'',id:''};
+    });
+  });
+
+  // Apply status filter
+  if (filterVal !== 'all') {
+    var ts = filterVal==='occupied'?'Occupied':filterVal==='available'?'Available':'Maintenance';
+    var keep = rooms.map(function(_,ri){return statusGrid[ri].some(function(c){return c.s===ts;});});
+    rooms = rooms.filter(function(_,ri){return keep[ri];});
+    statusGrid = statusGrid.filter(function(_,ri){return keep[ri];});
+  }
+
+  // Stats
+  var occ=0,avail=0,maint=0,total=0;
+  statusGrid.forEach(function(row){row.forEach(function(c){
+    total++; if(c.s==='Occupied')occ++; else if(c.s==='Available')avail++; else maint++;
+  });});
+  var pct=total?Math.round(occ/total*100):0;
+  document.getElementById('mp-stats').innerHTML =
+    '<div class="stat-card maroon"><div class="stat-icon">🔴</div><div class="stat-num">'+occ+'</div><div class="stat-label">Occupied Nights</div></div>'
+   +'<div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-num">'+avail+'</div><div class="stat-label">Available Nights</div></div>'
+   +'<div class="stat-card gold"><div class="stat-icon">🔧</div><div class="stat-num">'+maint+'</div><div class="stat-label">Maintenance Nights</div></div>'
+   +'<div class="stat-card saffron"><div class="stat-icon">📊</div><div class="stat-num">'+pct+'%</div><div class="stat-label">Occupancy Rate</div></div>';
+
+  // Month groups
+  var months=[],cm='',cc=0;
+  dates.forEach(function(d){var m=d.slice(0,7);if(m!==cm){if(cm)months.push({label:new Date(cm+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'}),count:cc});cm=m;cc=1;}else cc++;});
+  if(cm)months.push({label:new Date(cm+'-01').toLocaleDateString('en-IN',{month:'long',year:'numeric'}),count:cc});
+
+  var mColors=['#7B0D00','#1565C0','#1B5E20'];
+  var hHtml='<tr><th rowspan="2" style="position:sticky;left:0;z-index:3;background:#7B0D00;color:#E8C06A;padding:8px 12px;text-align:left;white-space:nowrap;min-width:90px;border-right:2px solid #C8973A;">Room</th>';
+  months.forEach(function(m,mi){hHtml+='<th colspan="'+m.count+'" style="background:'+mColors[mi%3]+';color:#fff;padding:6px 4px;text-align:center;font-size:0.75rem;border-left:2px solid rgba(255,255,255,0.4);">'+m.label+'</th>';});
+  hHtml+='</tr><tr>';
+  var DOW=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  dates.forEach(function(d){
+    var dt=new Date(d+'T00:00:00');
+    var day=dt.getDate();var dow=DOW[dt.getDay()];
+    var iswe=dt.getDay()===0||dt.getDay()===6;var ismo=day===1;
+    hHtml+='<th style="background:'+(iswe?'#3E2723':'#4E342E')+';color:'+(iswe?'#FFD54F':'#E8C06A')+';padding:3px 1px;text-align:center;font-size:0.62rem;min-width:30px;max-width:30px;'+(ismo?'border-left:2px solid #C8973A;':'')+'"><div style="font-size:0.68rem;font-weight:700;">'+day+'</div><div style="font-size:0.55rem;opacity:0.8;">'+dow+'</div></th>';
+  });
+  hHtml+='</tr>';
+  document.getElementById('mpHead').innerHTML=hHtml;
+
+  // Body with colored circles
+  var bHtml='',lastCat='';
+  rooms.forEach(function(room,ri){
+    var cat=val(room,'Category')||'';
+    var rid=val(room,'Room ID')||'';
+    var rate=parseFloat(val(room,'Rate')||0);
+
+    if(cat!==lastCat){
+      var ci=cat.toLowerCase().includes('3bhk')?'🏡':cat.toLowerCase().includes('2bhk')?'🏠':cat.toLowerCase().includes('non')?'🌬️':'❄️';
+      bHtml+='<tr><td colspan="'+(dates.length+1)+'" style="background:linear-gradient(135deg,#5C0A00,#8B1A00);color:#E8C06A;font-weight:700;font-size:0.78rem;padding:6px 14px;position:sticky;left:0;z-index:2;">'+ci+' '+cat+' — Rs.'+rate.toLocaleString('en-IN')+'/night</td></tr>';
+      lastCat=cat;
+    }
+
+    bHtml+='<tr>';
+    bHtml+='<td style="position:sticky;left:0;z-index:2;background:#FDF8F0;font-weight:700;color:#7B0D00;padding:5px 10px;border-right:2px solid #C8973A;font-size:0.82rem;border-bottom:1px solid #EFE4CC;white-space:nowrap;">'+rid+'</td>';
+
+    statusGrid[ri].forEach(function(cell,di){
+      var dt=new Date(dates[di]+'T00:00:00');
+      var ismo=dt.getDate()===1;var iswe=dt.getDay()===0||dt.getDay()===6;
+      var cBg,cColor,tip;
+      if(cell.s==='Occupied'){cBg='#F44336';cColor='#FFEBEE';tip=cell.who+(cell.id?' ('+cell.id+')':'');}
+      else if(cell.s==='Maintenance'){cBg='#FFC107';cColor='#FFF8E1';tip='Under Maintenance';}
+      else{cBg='#4CAF50';cColor='#E8F5E9';tip='Available';}
+
+      bHtml+='<td style="background:'+(iswe?'#F5F0E8':'#FFFFFF')+';text-align:center;padding:3px 1px;'
+        +(ismo?'border-left:2px solid #C8973A;':'')
+        +'border:1px solid #F0EAD8;border-bottom:1px solid #EFE4CC;" title="'+rid+' | '+dates[di]+' | '+tip+'">'
+        +'<span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:'+cBg+';'
+        +'box-shadow:0 1px 3px rgba(0,0,0,0.25);cursor:pointer;line-height:20px;font-size:0;vertical-align:middle;">'
+        +'</span>'
+        +'</td>';
+    });
+    bHtml+='</tr>';
+  });
+
+  if(!rooms.length)bHtml='<tr><td colspan="'+(dates.length+1)+'" style="text-align:center;padding:30px;color:var(--text-light);">No rooms match the selected filter.</td></tr>';
+  document.getElementById('mpBody').innerHTML=bHtml;
+}
+
+function exportMonthlyPlanCSV() {
+  var startVal=document.getElementById('mp-start')?.value||TODAY;
+  var days=parseInt(document.getElementById('mp-days')?.value||'30');
+  var filterLabel={'all':'All','occupied':'Occupied','available':'Available','maintenance':'Maintenance'}[document.getElementById('mp-filter')?.value||'all'];
+  var dates=[];
+  for(var d=0;d<days;d++){var dt=new Date(startVal+'T00:00:00');dt.setDate(dt.getDate()+d);dates.push(dt.toISOString().split('T')[0]);}
+  function catOrd(cat){var c=(cat||'').toLowerCase();if(c.includes('3bhk'))return 1;if(c.includes('2bhk'))return 2;if(c.includes('ac')&&!c.includes('non'))return 3;if(c.includes('non'))return 4;return 5;}
+  var rooms=allRooms.slice().sort(function(a,b){var co=catOrd(val(a,'Category'))-catOrd(val(b,'Category'));return co||parseInt(String(val(a,'Room ID')).replace(/[^0-9]/g,''))-parseInt(String(val(b,'Room ID')).replace(/[^0-9]/g,''));});
+  var today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  var lines=['"Shri Parmagam Shravak Trust — Monthly Room Plan"','"As on: '+today+' | From: '+startVal+' | Days: '+days+' | Filter: '+filterLabel+'"',''];
+  var hdr=['"Room No."','"Category"','"Rate/Night"'];
+  dates.forEach(function(d){var dt=new Date(d+'T00:00:00');hdr.push('"'+dt.getDate()+'/'+(dt.getMonth()+1)+'/'+String(dt.getFullYear()).slice(2)+'"');});
+  lines.push(hdr.join(','));
+  var lastCat='';
+  rooms.forEach(function(r){
+    var rid=String(val(r,'Room ID')||'').trim();var cat=val(r,'Category')||'';var rate=val(r,'Rate')||'';
+    if(cat!==lastCat){lines.push('"=== '+cat+' ==="');lastCat=cat;}
+    var row=['"'+rid+'"','"'+cat+'"','"'+rate+'"'];
+    dates.forEach(function(d){
+      var s='Available';
+      if((val(r,'Status')||'').toLowerCase()==='maintenance'){s='Maintenance';}
+      else{for(var i=0;i<allReservations.length;i++){var res=allReservations[i];var rs=(val(res,'Status')||'').toLowerCase();if(rs==='cancelled'||rs==='regret')continue;var ar=String(val(res,'Allocated Rooms')||'').split(',').map(function(x){return x.trim();});if(ar.indexOf(rid)<0)continue;var ci=toISO(val(res,'Check-In'));var co=toISO(val(res,'Check-Out'));if(ci&&co&&d>=ci&&d<co){s='Occupied: '+val(res,'Full Name');break;}}}
+      row.push('"'+s+'"');
+    });
+    lines.push(row.join(','));
+  });
+  var bom='\uFEFF';
+  var blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='PST_Monthly_Room_Plan_'+startVal+'_'+filterLabel+'.csv';a.click();URL.revokeObjectURL(url);
+}
+
 
 function exportOccupancyExcel() {
   const filterVal=document.getElementById('occ-filter')?.value||'all';
