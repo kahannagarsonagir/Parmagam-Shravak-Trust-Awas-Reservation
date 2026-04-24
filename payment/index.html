@@ -482,7 +482,7 @@ async function submitPayment() {
     transactionRef: document.getElementById('payTxn').value.trim(),
     paymentDate:    document.getElementById('payDate').value,
     notes:          document.getElementById('payNotes').value.trim(),
-    screenshot:     screenshotBase64.slice(0, 500) // truncate for storage
+    screenshot:     screenshotBase64 // full image — saved to Google Drive by Apps Script
   };
 
   try {
