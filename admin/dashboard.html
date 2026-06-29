@@ -133,6 +133,7 @@ body { display:flex; flex-direction:column; min-height:100vh; background:#F5EDD8
     letter-spacing:0.05em;
   }
   body.view-only .viewer-badge { display:inline-block; }
+  body.view-only button[onclick*="sendFeedbackWhatsApp"],
   body.view-only button[onclick*="changeRoom"],
   body.view-only .act-allocate,
   body.view-only .act-regret,
@@ -1077,6 +1078,63 @@ function setBar(barId, rooms, cat) {
 }
 
 // ══ RESERVATIONS TABLE ══
+// ── Send Feedback link via WhatsApp Web (click opens WhatsApp Web / App) ──
+function sendFeedbackWhatsApp(resId) {
+  const r = allReservations.find(x => val(x,'ID') === resId);
+  if (!r) return;
+  const name   = val(r,'Full Name') || '';
+  const mobile = val(r,'Mobile') || '';
+  const refId  = val(r,'ID')     || '';
+  const addr   = val(r,'Address')  || '';
+  const city   = val(r,'City')     || '';
+  const state  = val(r,'State')    || '';
+  const occ    = val(r,'Occupation')   || '';
+  const org    = val(r,'Organization') || '';
+  const desig  = val(r,'Designation') || '';
+  const email  = val(r,'Email')    || '';
+  const cin    = toISO(val(r,'Check-In'))  || '';
+  const cout   = toISO(val(r,'Check-Out')) || '';
+
+  if (!mobile) { alert('No mobile number found for ' + name); return; }
+
+  // Sanitize mobile — remove spaces, dashes, ensure starts with country code
+  const mob = mobile.replace(/[^0-9]/g,'');
+  const intMob = mob.startsWith('91') ? mob : '91' + mob;
+
+  // Build feedback URL (same as email trigger)
+  const base = 'https://kahannagarsonagir.github.io/Parmagam-Shravak-Trust-Awas-Reservation/feedback/';
+  const feedbackUrl = base
+    + '?ref='    + encodeURIComponent(refId)
+    + '&name='   + encodeURIComponent(name)
+    + '&mobile=' + encodeURIComponent(mobile)
+    + '&email='  + encodeURIComponent(email)
+    + '&addr='   + encodeURIComponent(addr)
+    + '&city='   + encodeURIComponent(city)
+    + '&state='  + encodeURIComponent(state)
+    + '&occ='    + encodeURIComponent(occ)
+    + '&org='    + encodeURIComponent(org)
+    + '&desig='  + encodeURIComponent(desig)
+    + '&cin='    + encodeURIComponent(cin)
+    + '&cout='   + encodeURIComponent(cout);
+
+  const msg = 'Jai Jinendra!\n\n'
+    + 'Shri Parmagam Shravak Trust, Sonagir\n'
+    + 'Shri Kund Kund Nagar, Siddhakshetra Sonagir\n\n'
+    + 'Dear ' + name + ',\n\n'
+    + 'Thank you for staying with us. We hope your visit was spiritually fulfilling.\n'
+    + 'Aapka Shri Kund Kund Nagar mein swaagat hai. Kripaya apna anubhav share karen.\n\n'
+    + 'Please share your valuable feedback (only 2 minutes):\n'
+    + 'Kripaya apni mahatvapurn feedback den (sirf 2 minute):\n\n'
+    + feedbackUrl + '\n\n'
+    + 'Ref ID: ' + refId + '\n\n'
+    + 'Ph: 8827417276 / 9910040020\n'
+    + 'Jai Jinendra - Shubh Yatra!';
+
+  // Open WhatsApp with pre-filled message to visitor's mobile
+  const waUrl = 'https://wa.me/' + intMob + '?text=' + encodeURIComponent(msg);
+  window.open(waUrl, '_blank');
+}
+
 function renderReservTable(data) {
   const tbody = document.getElementById('reservTbody');
   document.getElementById('reservCount').textContent = `Showing ${data.length} reservation(s)`;
@@ -1100,6 +1158,7 @@ function renderReservTable(data) {
         ${val(r,'Status')==='Pending'?`<button class="act-btn act-allocate" onclick="openAllocModal('${val(r,'ID')}')">🏠 Allocate</button> `:''}
         ${val(r,'Status')==='Confirmed'?`<button class="act-btn" style="border-color:#1565C0;color:#1565C0;" onclick="changeRoom('${val(r,'ID')}','${val(r,'Allocated Rooms')||''}')" title="Change allocated room">🔄 Change Room</button> `:''}
         <button class="act-btn act-view" onclick="viewReservation('${val(r,'ID')}')">👁 View</button>
+        <button class="act-btn" style="border-color:#25D366;color:#1B8A4C;font-weight:700;" onclick="sendFeedbackWhatsApp('${val(r,'ID')}')" title="Send Feedback Link via WhatsApp">💬 WhatsApp</button>
         ${(val(r,'Status')==='Pending')?`<button class="act-btn act-regret" onclick="sendRegretMail('${val(r,'ID')}')" title="Send Regret — Before Payment Only">📩 Regret</button>`:''}
         ${val(r,'Status')!=='Cancelled'?`<button class="act-btn act-cancel" onclick="cancelReservation('${val(r,'ID')}')">✕</button>`:''}
       </td>
