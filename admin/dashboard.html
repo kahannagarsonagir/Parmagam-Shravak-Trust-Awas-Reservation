@@ -342,7 +342,7 @@ body { display:flex; flex-direction:column; min-height:100vh; background:#F5EDD8
       </div>
       <div class="metric-grid" id="arr-metrics"></div>
       <div style="overflow-x:auto;"><table class="data-table"><thead><tr>
-        <th>Ref ID</th><th>Type</th><th>Visitor</th><th>Mobile</th><th>Check-In</th><th>Check-Out</th><th>Nights</th><th>Members</th><th>Status</th>
+        <th>Ref ID</th><th>Type</th><th>Visitor</th><th>Mobile</th><th>Check-In</th><th>Check-Out</th><th>Nights</th><th>Members</th><th>Status</th><th>Action</th>
       </tr></thead><tbody id="arrTbody"><tr class="empty-row"><td colspan="9">Select date and click Load</td></tr></tbody></table></div>
     </div>
   </div>
@@ -1933,12 +1933,16 @@ function loadArrReport() {
     ? data.map(r=>`<tr>
         <td><code style="font-size:0.72rem;">${val(r,'ID')}</code></td>
         <td>${toISO(val(r,'Check-In'))===date?'🛎️ Arrival':'🚪 Departure'}</td>
-        <td>${val(r,'Full Name')}</td><td>${val(r,'Mobile')}</td>
+        <td><strong>${val(r,'Full Name')}</strong></td><td>${val(r,'Mobile')}</td>
         <td>${fmtDate(val(r,'Check-In'))}</td><td>${fmtDate(val(r,'Check-Out'))}</td>
         <td style="text-align:center;">${val(r,'Nights')}</td><td style="text-align:center;">—</td>
         <td><span class="badge s-${(val(r,'Status')||'pending').toLowerCase()}">${val(r,'Status')||'Pending'}</span></td>
+        <td style="white-space:nowrap;">
+          <button class="act-btn act-view" style="font-size:0.72rem;" onclick="viewReservation('${val(r,'ID')}')" title="View Details">👁 View</button>
+          <button class="act-btn" style="border-color:#25D366;color:#1B8A4C;font-size:0.72rem;font-weight:700;" onclick="sendFeedbackWhatsApp('${val(r,'ID')}')" title="Send Feedback via WhatsApp">💬 WA Feedback</button>
+        </td>
       </tr>`).join('')
-    : '<tr class="empty-row"><td colspan="9">No arrivals or departures on this date</td></tr>';
+    : '<tr class="empty-row"><td colspan="10">No arrivals or departures on this date</td></tr>';
 }
 
 function renderOccupancy() {
