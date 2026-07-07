@@ -863,8 +863,6 @@ async function loadAll() {
     renderOverview();
     renderAllocTable();
     renderRoomsTable();
-    // Restore WA sent button states from localStorage
-    setTimeout(function() { cleanOldWARecords(); restoreWAButtonStates(); }, 600);
   } catch(err) {
     console.error('❌ loadAll failed:', err);
     showDataError('Could not load data. Error: ' + err.message);
@@ -1135,90 +1133,12 @@ function sendFeedbackWhatsApp(resId) {
   // Open WhatsApp with pre-filled message to visitor's mobile
   const waUrl = 'https://wa.me/' + intMob + '?text=' + encodeURIComponent(msg);
   window.open(waUrl, '_blank');
-
-  // ── Mark as sent locally (localStorage) ──
-  const sentAt = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'});
-  const sentKey = 'wa_feedback_sent';
-  let sentList = JSON.parse(localStorage.getItem(sentKey) || '{}');
-  sentList[resId] = { sentAt, sentBy:'Front Office', mobile, name };
-  localStorage.setItem(sentKey, JSON.stringify(sentList));
-
-  // Change button color immediately
-  markWAButtonSent(resId, sentAt);
-
-  // ── Log to Google Sheet + send email notification to admin ──
-  try {
-    fetch(SHEETS_CONFIG.APPS_SCRIPT_URL, {
-      method:  'POST',
-      headers: {'Content-Type':'text/plain;charset=utf-8'},
-      body:    JSON.stringify({
-        action:         'logWAFeedback',
-        reservationId:  resId,
-        visitorName:    name,
-        mobile:         mobile,
-        sentAt:         sentAt,
-        sentBy:         'Front Office — ' + (window.location.hostname || 'Dashboard')
-      }),
-      mode: 'no-cors'
-    });
-    console.log('WA feedback logged for:', resId);
-  } catch(logErr) {
-    console.log('Log error (non-critical):', logErr.message);
-  }
-}
-
-// ── Mark WA button as sent (green → blue with tick) ──
-function markWAButtonSent(resId, sentAt) {
-  const s = JSON.parse(localStorage.getItem('wa_feedback_sent') || '{}')[resId];
-  const displayAt = sentAt || (s ? s.sentAt : 'Earlier');
-  document.querySelectorAll('button[onclick*="sendFeedbackWhatsApp('' + resId + '')"]').forEach(function(btn) {
-    btn.style.borderColor = '#1565C0';
-    btn.style.color       = '#1565C0';
-    btn.style.background  = '#E3F2FD';
-    btn.style.fontWeight  = '700';
-    btn.textContent       = '✅ WA Sent';
-    btn.title             = 'WA Feedback sent at: ' + displayAt;
-    btn.onclick           = function() {
-      const rec = JSON.parse(localStorage.getItem('wa_feedback_sent') || '{}')[resId];
-      alert('WhatsApp Feedback already sent!\n\n'
-        + 'Ref ID : ' + resId + '\n'
-        + 'Sent at: ' + (rec ? rec.sentAt : displayAt) + '\n'
-        + 'Mobile : ' + (rec ? rec.mobile : '') + '\n'
-        + 'Name   : ' + (rec ? rec.name   : '') + '\n\n'
-        + 'Admin has been notified by email.');
-    };
-  });
-}
-
-// ── Restore WA button states from localStorage on page load ──
-function restoreWAButtonStates() {
-  const sentList = JSON.parse(localStorage.getItem('wa_feedback_sent') || '{}');
-  Object.keys(sentList).forEach(function(resId) {
-    markWAButtonSent(resId);
-  });
-}
-
-// ── Clear old sent records (older than 30 days) to avoid localStorage bloat ──
-function cleanOldWARecords() {
-  const sentList = JSON.parse(localStorage.getItem('wa_feedback_sent') || '{}');
-  const cutoff   = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
-  let cleaned = false;
-  Object.keys(sentList).forEach(function(resId) {
-    const rec = sentList[resId];
-    if (rec && rec.sentAt) {
-      try {
-        if (new Date(rec.sentAt) < cutoff) { delete sentList[resId]; cleaned = true; }
-      } catch(e) {}
-    }
-  });
-  if (cleaned) localStorage.setItem('wa_feedback_sent', JSON.stringify(sentList));
 }
 
 function renderReservTable(data) {
   const tbody = document.getElementById('reservTbody');
   document.getElementById('reservCount').textContent = `Showing ${data.length} reservation(s)`;
-  if (!data.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="14">No reservations found</td></tr>'; setTimeout(restoreWAButtonStates,100); return; }
+  if (!data.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="14">No reservations found</td></tr>'; return; }
   tbody.innerHTML = data.map(r => `
     <tr>
       <td><code style="font-size:0.72rem;color:var(--maroon);">${val(r,'ID')}</code></td>
@@ -2023,8 +1943,6 @@ function loadArrReport() {
         </td>
       </tr>`).join('')
     : '<tr class="empty-row"><td colspan="10">No arrivals or departures on this date</td></tr>';
-  // Restore WA button states after table renders
-  setTimeout(restoreWAButtonStates, 100);
 }
 
 function renderOccupancy() {
